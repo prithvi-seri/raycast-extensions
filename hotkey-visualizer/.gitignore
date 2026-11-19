@@ -1,0 +1,10 @@
+node_modules/
+dist/
+exports/*
+!exports/.gitkeep
+*.rayconfig
+*.local.json
+assets/keychain-helper
+.DS_Store
+assets/bootstrap.json
+.update-backups/
