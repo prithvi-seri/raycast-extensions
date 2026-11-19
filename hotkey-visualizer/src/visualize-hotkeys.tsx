@@ -35,6 +35,7 @@ import {
   type HotkeyMap,
   type Modifier,
 } from "./core/hotkeys.ts";
+import { cancelRefresh } from "./core/refresh-lock.ts";
 import { availableKeys, KEYS, renderKeyboard } from "./core/keyboard.ts";
 
 const md = (text: string) =>
@@ -76,6 +77,7 @@ function Layers({
             <ActionPanel>
               <Action
                 title="Show Layer"
+                icon={Icon.Layers}
                 onAction={() => {
                   select(layer);
                   pop();
@@ -135,6 +137,7 @@ function Browse({ map, layer }: { map: HotkeyMap; layer: Modifier[] }) {
                 <ActionPanel>
                   <Action.Push
                     title="Inspect Key"
+                    icon={Icon.Eye}
                     target={
                       <KeyboardView
                         map={map}
@@ -145,6 +148,7 @@ function Browse({ map, layer }: { map: HotkeyMap; layer: Modifier[] }) {
                   />
                   <Action.CopyToClipboard
                     title="Copy Shortcut"
+                    icon={Icon.Clipboard}
                     content={`${layerLabel(layer)} ${keyLabel(k.key)}`}
                   />
                 </ActionPanel>
@@ -185,6 +189,7 @@ function AllBindings({ map }: { map: HotkeyMap }) {
               <ActionPanel>
                 <Action.Push
                   title="Show on Keyboard"
+                  icon={Icon.Keyboard}
                   target={
                     <KeyboardView
                       map={map}
@@ -195,6 +200,7 @@ function AllBindings({ map }: { map: HotkeyMap }) {
                 />
                 <Action.CopyToClipboard
                   title="Copy Shortcut"
+                  icon={Icon.Clipboard}
                   content={shortcutLabel(b)}
                 />
               </ActionPanel>
@@ -217,6 +223,7 @@ function ImportForm({
         <ActionPanel>
           <Action.SubmitForm
             title="Import Export"
+            icon={Icon.Download}
             onSubmit={async (values: { files: string[] }) => {
               if (values.files?.[0]) {
                 try {
@@ -255,6 +262,7 @@ function FolderForm() {
         <ActionPanel>
           <Action.SubmitForm
             title="Save Export Folder"
+            icon={Icon.Folder}
             onSubmit={async () => {
               if (folder[0]) {
                 const c = await loadConfig(
@@ -369,6 +377,7 @@ function KeyboardView({
           />
           <Action.Push
             title="Search All Assignments"
+            icon={Icon.MagnifyingGlass}
             target={<AllBindings map={map} />}
           />
           <Action
@@ -382,6 +391,17 @@ function KeyboardView({
               })
             }
           />
+          <Action
+            title="Cancel Pending Refresh"
+            icon={Icon.XMarkCircle}
+            onAction={async () => {
+              const canceled = await cancelRefresh(environment.supportPath);
+              await showToast({
+                style: Toast.Style.Success,
+                title: canceled ? "Refresh canceled" : "No refresh is pending",
+              });
+            }}
+          />
           {onImport && (
             <Action.Push
               title="Import Export"
@@ -392,6 +412,7 @@ function KeyboardView({
           {onImport && (
             <Action
               title="Unlock and Reimport Export"
+              icon={Icon.LockUnlocked}
               onAction={async () => {
                 try {
                   await onImport(map.source, true);
@@ -405,6 +426,7 @@ function KeyboardView({
             target={<FolderForm />}
           />
           <Action.CopyToClipboard
+            icon={Icon.Clipboard}
             title={
               map.warnings.length
                 ? "Copy Import Warning"
@@ -423,7 +445,14 @@ function KeyboardView({
     />
   );
 }
-type VisualizerContext = { refreshError?: string };
+type VisualizerContext = {
+  refreshError?: string;
+  refreshNotice?: {
+    kind: "success" | "failure";
+    title: string;
+    message: string;
+  };
+};
 export default function VisualizeHotkeys(
   props: LaunchProps<{ launchContext: VisualizerContext }>,
 ) {
@@ -465,6 +494,16 @@ export default function VisualizeHotkeys(
             style: Toast.Style.Failure,
             title: "Refresh did not finish",
             message: props.launchContext?.refreshError,
+          });
+        const notice = props.launchContext?.refreshNotice;
+        if (notice)
+          await showToast({
+            style:
+              notice.kind === "success"
+                ? Toast.Style.Success
+                : Toast.Style.Failure,
+            title: notice.title,
+            message: notice.message,
           });
         const cached = await readMap(environment.supportPath);
         if (cached) {
@@ -514,10 +553,12 @@ export default function VisualizeHotkeys(
         <ActionPanel>
           <Action.Push
             title="Import Export"
+            icon={Icon.Download}
             target={<ImportForm onImport={doImport} />}
           />
           <Action
             title="Unlock Export and Retry"
+            icon={Icon.LockUnlocked}
             onAction={async () => {
               try {
                 const c = await loadConfig(
@@ -535,6 +576,8 @@ export default function VisualizeHotkeys(
           />
           <Action
             title="Refresh from Raycast Export"
+            icon={Icon.ArrowClockwise}
+            shortcut={{ modifiers: ["cmd"], key: "r" }}
             onAction={() =>
               launchCommand({
                 name: "refresh-export",
@@ -542,7 +585,11 @@ export default function VisualizeHotkeys(
               })
             }
           />
-          <Action.Push title="Choose Export Folder" target={<FolderForm />} />
+          <Action.Push
+            title="Choose Export Folder"
+            icon={Icon.Folder}
+            target={<FolderForm />}
+          />
         </ActionPanel>
       }
     />

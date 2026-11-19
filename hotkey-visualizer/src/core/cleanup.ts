@@ -15,7 +15,9 @@ export async function trashOlderExports(
   current: Candidate,
   baseline: Snapshot,
   trashFile: (path: string) => Promise<void>,
+  options: { check?: () => Promise<void> } = {},
 ): Promise<{ removed: number; failed: number }> {
+  await options.check?.();
   const name = generatedName.exec(basename(current.path));
   if (!name) return { removed: 0, failed: 0 };
   const files = await snapshot(dirname(current.path));
@@ -25,6 +27,7 @@ export async function trashOlderExports(
   let removed = 0,
     failed = 0;
   for (const [path, before] of baseline) {
+    await options.check?.();
     const oldName = generatedName.exec(basename(path)),
       now = files.get(path);
     if (
@@ -62,9 +65,11 @@ export async function trashOlderExports(
         })
       )
         continue;
+      await options.check?.();
       await trashFile(path);
       removed++;
     } catch {
+      await options.check?.();
       failed++;
     }
   }

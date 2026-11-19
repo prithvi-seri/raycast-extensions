@@ -108,11 +108,16 @@ Pressing `⌘R` in the keyboard view starts a no-view command that takes a folde
 snapshot and opens
 the built-in export command, and awaits the export watcher. Confirm the dialog,
 use your export password, and save in the configured folder. New files and
-replacements are detected automatically; successful import reopens the keyboard.
+replacements are detected automatically; successful import reopens the keyboard
+and displays its result as an in-window toast. Completion does not show a HUD
+that could close the view or reset navigation to Root Search.
 Opening the visualizer always uses the saved map. A pending refresh times out
-after five minutes. Its lock prevents two refreshes
-from processing the same dialog; an interrupted refresh can be retried after six
-minutes. Importing an existing export also selects its parent folder for future
+after five minutes. Each explicit refresh automatically replaces any pending refresh, so there is
+no separate restart action or busy-refresh toast. A heartbeat lease recovers
+within approximately 15 seconds if the watcher is interrupted. **Cancel Pending
+Refresh** stops waiting without starting another export; an older watcher cannot
+clear the lock of its replacement. The lock is released
+before returning to the keyboard command, so command unloading cannot strand it. Importing an existing export also selects its parent folder for future
 refreshes. Choosing another folder changes the watcher without moving any export.
 
 ### Local development
@@ -154,3 +159,12 @@ custom-named backups, other filename families, symlinks, and files that do not
 start with the modern Raycast export signature are preserved. Cleanup is skipped
 if import fails or produces parsing warnings. Trash failures do not discard the
 new map and are reported in the result.
+
+### If a refresh appears stuck
+
+The watcher and the Save dialog must use the same folder. After moving an export,
+use **Import Export** to select its new location; that also updates the watched
+folder. Alternatively use **Choose Export Folder** before refreshing. If a pending
+refresh is waiting for the wrong folder, update the folder and press `⌘R` again.
+The same Refresh action cancels the existing watcher and starts a fresh export. Interrupted watchers release automatically after their
+heartbeat expires; filesystem errors are reported separately from a busy watcher.

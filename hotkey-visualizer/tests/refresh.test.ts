@@ -159,3 +159,31 @@ test("Trash failures preserve the successfully imported replacement and are repo
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("a canceled refresh stops cleanup before moving any old export to Trash", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "hotkey-cancel-cleanup-"));
+  try {
+    const old = join(dir, exportName("12.00.00")),
+      current = join(dir, exportName("13.00.00"));
+    await writeFile(old, exportBytes);
+    const baseline = await snapshot(dir);
+    await writeFile(current, exportBytes);
+    const stamp = (await snapshot(dir)).get(current)!;
+    let trashed = false;
+    await assert.rejects(
+      trashOlderExports(
+        { path: current, stamp },
+        baseline,
+        async () => {
+          trashed = true;
+        },
+        { check: async () => { throw new Error("Refresh replaced"); } },
+      ),
+      /Refresh replaced/,
+    );
+    assert.equal(trashed, false);
+    assert.ok((await stat(old)).isFile());
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -152,7 +152,9 @@ export async function importFile(
   support: string,
   assets: string,
   forcePrompt = false,
+  signal?: AbortSignal,
 ): Promise<HotkeyMap> {
+  signal?.throwIfAborted();
   file = expandPath(file);
   const stamp = (await snapshot(dirname(file))).get(file);
   if (!stamp)
@@ -169,15 +171,19 @@ export async function importFile(
       try {
         password = await getExportPassword(helper);
       } catch {
+        signal?.throwIfAborted();
         password = await promptExportPassword(helper);
         prompted = true;
       }
     }
+    signal?.throwIfAborted();
     const { payload } = await decodeExport(bytes, password);
     const map = await resolveAppAvailability(
       extractHotkeys(payload, file, await installedTitles()),
     );
+    signal?.throwIfAborted();
     if (prompted) await saveExportPassword(password, helper);
+    signal?.throwIfAborted();
     await atomicJSON(join(support, "hotkeys.json"), map);
     await atomicJSON(join(support, "config.json"), {
       file,
